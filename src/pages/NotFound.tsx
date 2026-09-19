@@ -1,50 +1,45 @@
+"use client";
+
+import Link from "next/link";
+import Header from "@/components/site/Header";
+import Footer from "@/components/site/Footer";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, Home } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { BOUTIQUE, ouvrirWhatsApp } from "@/lib/boutique";
 
 export default function NotFound() {
-  const router = useRouter();
-  const setLocation = router.push;
-
-  const handleGoHome = () => {
-    setLocation("/");
-  };
-
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <Card className="w-full max-w-lg mx-4 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardContent className="pt-8 pb-8 text-center">
-          <div className="flex justify-center mb-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-red-100 rounded-full animate-pulse" />
-              <AlertCircle className="relative h-16 w-16 text-red-500" />
-            </div>
-          </div>
+    <div className="flex min-h-screen flex-col bg-noir text-foreground">
+      <Header />
 
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">404</h1>
-
-          <h2 className="text-xl font-semibold text-slate-700 mb-4">
-            Page Not Found
-          </h2>
-
-          <p className="text-slate-600 mb-8 leading-relaxed">
-            Sorry, the page you are looking for doesn't exist.
-            <br />
-            It may have been moved or deleted.
+      <main id="contenu" className="container flex flex-1 items-center py-20">
+        <div className="max-w-xl">
+          <p className="prix text-6xl leading-none text-laiton">404</p>
+          <h1 className="display-lg mt-4 text-blanc">Cette page n&apos;existe pas</h1>
+          <p className="prose-ks mt-4 text-muted-foreground">
+            Le lien est peut-être ancien, ou l&apos;appareil que vous cherchiez a quitté le
+            catalogue. Le stock du jour est dans le catalogue, et nous répondons sur WhatsApp
+            si vous cherchez un modèle précis.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild size="lg">
+              <Link href="/catalogue">Voir le catalogue</Link>
+            </Button>
             <Button
-              onClick={handleGoHome}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+              size="lg"
+              variant="outline"
+              className="border-line-strong text-blanc"
+              onClick={() =>
+                ouvrirWhatsApp(`Bonjour ${BOUTIQUE.nom}, je cherche un modèle précis :`)
+              }
             >
-              <Home className="w-4 h-4 mr-2" />
-              Go Home
+              Demander un modèle
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

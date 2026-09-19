@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Trash2, AlertTriangle, Plus, Upload, X } from "lucide-react";
+import { getVisuel } from "@/lib/boutique";
 
 export default function CatalogueAdmin() {
   const [products, setProducts] = useState<any[]>([]);
@@ -166,11 +167,7 @@ export default function CatalogueAdmin() {
           {products.map(p => (
             <div key={p.id} className="bg-card rounded-lg overflow-hidden border border-border flex flex-col">
               <div className="h-48 bg-secondary flex items-center justify-center overflow-hidden">
-                {p.images && p.images[0] ? (
-                  <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-muted-foreground">Pas d'image</span>
-                )}
+                <img src={getVisuel(p)} alt={p.name} className="w-full h-full object-cover" />
               </div>
               <div className="p-4 flex-1 flex flex-col">
                 <div className="flex justify-between items-start mb-2">

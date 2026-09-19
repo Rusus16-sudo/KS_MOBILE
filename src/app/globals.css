@@ -1,13 +1,38 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+@plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------------------------------------------------------------------------
+   KS Mobile — système de design
+   Boutique de téléphones, Akwa (Douala). Noir / bleu électrique / blanc,
+   avec un laiton réservé au prix et à la garantie d'authenticité.
+   Toutes les valeurs oklch sont dans le gamut sRGB et les paires
+   texte/fond sont vérifiées à 4.5:1 minimum.
+--------------------------------------------------------------------------- */
+
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --font-display: var(--font-archivo);
+  --font-sans: var(--font-plex);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  /* Tokens nommés, utilisables directement : bg-noir, text-laiton, etc. */
+  --color-noir: var(--noir);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-blanc: var(--blanc);
+  --color-volt: var(--volt);
+  --color-volt-deep: var(--volt-deep);
+  --color-laiton: var(--laiton);
+  --color-whatsapp: var(--whatsapp);
+
+  /* Tokens shadcn — conservés pour les 60+ composants de src/components/ui */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -27,11 +52,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -43,83 +63,75 @@
 }
 
 :root {
-  --primary: oklch(0.5 0.3 263);
-  --primary-foreground: oklch(1 0 0);
-  --sidebar-primary: oklch(0.5 0.3 263);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --chart-1: oklch(0.5 0.3 263);
-  --chart-2: oklch(0.6 0.25 263);
-  --chart-3: oklch(0.5 0.3 263);
-  --chart-4: oklch(0.45 0.28 263);
-  --chart-5: oklch(0.4 0.26 263);
-  --radius: 0.65rem;
-  --background: oklch(0.08 0.02 263);
-  --foreground: oklch(1 0 0);
-  --card: oklch(0.12 0.02 263);
-  --card-foreground: oklch(1 0 0);
-  --popover: oklch(0.12 0.02 263);
-  --popover-foreground: oklch(1 0 0);
-  --secondary: oklch(0.15 0.02 263);
-  --secondary-foreground: oklch(0.9 0.01 0);
-  --muted: oklch(0.18 0.02 263);
-  --muted-foreground: oklch(0.7 0.01 0);
-  --accent: oklch(0.55 0.3 263);
-  --accent-foreground: oklch(0.08 0.02 263);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.2 0.02 263);
-  --input: oklch(0.15 0.02 263);
-  --ring: oklch(0.55 0.3 263);
-  --sidebar: oklch(0.08 0.02 263);
-  --sidebar-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.55 0.3 263);
-  --sidebar-accent-foreground: oklch(0.08 0.02 263);
-  --sidebar-border: oklch(0.2 0.02 263);
-  --sidebar-ring: oklch(0.55 0.3 263);
+  /* --- Palette --- */
+  --noir: oklch(0.145 0.018 258); /* #060a12 fond de page */
+  --surface: oklch(0.185 0.018 258); /* #0e131b cartes, barres */
+  --raised: oklch(0.225 0.018 258); /* #171c24 survol, champs */
+  --line: oklch(0.32 0.016 258); /* #2e333b filets décoratifs */
+  --line-strong: oklch(0.52 0.02 258); /* bordures de contrôles, 3.4:1 */
+  --blanc: oklch(0.975 0.003 258); /* #f5f7f9 */
+  --gris: oklch(0.72 0.012 258); /* #a0a5ac texte secondaire, 7.98:1 */
+
+  --volt: oklch(0.6 0.19 262); /* #3c79f0 bleu électrique, 4.87:1 en texte */
+  --volt-deep: oklch(0.48 0.18 262); /* #1d54c1 fond de bouton, 6.31:1 en blanc */
+  --laiton: oklch(0.8 0.125 78); /* #eab358 prix + authenticité, 10.46:1 */
+  --whatsapp: oklch(0.7 0.16 150); /* #43b966 — texte foncé dessus */
+
+  --radius: 0.375rem;
+
+  /* --- Mapping shadcn --- */
+  --background: var(--noir);
+  --foreground: var(--blanc);
+  --card: var(--surface);
+  --card-foreground: var(--blanc);
+  --popover: var(--surface);
+  --popover-foreground: var(--blanc);
+  --primary: var(--volt-deep);
+  --primary-foreground: var(--blanc);
+  --secondary: var(--raised);
+  --secondary-foreground: var(--blanc);
+  --muted: var(--raised);
+  --muted-foreground: var(--gris);
+  --accent: var(--volt);
+  --accent-foreground: var(--noir);
+  --destructive: oklch(0.64 0.2 25);
+  --destructive-foreground: var(--blanc);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--volt);
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--blanc);
+  --sidebar-primary: var(--volt-deep);
+  --sidebar-primary-foreground: var(--blanc);
+  --sidebar-accent: var(--raised);
+  --sidebar-accent-foreground: var(--blanc);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--volt);
 }
 
-.dark {
-  --primary: oklch(0.5 0.3 263);
-  --primary-foreground: oklch(1 0 0);
-  --sidebar-primary: oklch(0.5 0.3 263);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --background: oklch(0.08 0.02 263);
-  --foreground: oklch(1 0 0);
-  --card: oklch(0.12 0.02 263);
-  --card-foreground: oklch(1 0 0);
-  --popover: oklch(0.12 0.02 263);
-  --popover-foreground: oklch(1 0 0);
-  --secondary: oklch(0.15 0.02 263);
-  --secondary-foreground: oklch(0.9 0.01 0);
-  --muted: oklch(0.18 0.02 263);
-  --muted-foreground: oklch(0.7 0.01 0);
-  --accent: oklch(0.55 0.3 263);
-  --accent-foreground: oklch(0.08 0.02 263);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.2 0.02 263);
-  --input: oklch(0.15 0.02 263);
-  --ring: oklch(0.55 0.3 263);
-  --chart-1: oklch(0.5 0.3 263);
-  --chart-2: oklch(0.6 0.25 263);
-  --chart-3: oklch(0.5 0.3 263);
-  --chart-4: oklch(0.45 0.28 263);
-  --chart-5: oklch(0.4 0.26 263);
-  --sidebar: oklch(0.08 0.02 263);
-  --sidebar-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.55 0.3 263);
-  --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.2 0.02 263);
-  --sidebar-ring: oklch(0.55 0.3 263);
-}
+/* La boutique n'a qu'un seul thème, sombre. `.dark` est posé sur <html> par
+   ThemeProvider pour activer les variantes `dark:` des composants shadcn ;
+   les valeurs sont déjà celles de :root, inutile de les redéclarer. */
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv05";
+    -webkit-font-smoothing: antialiased;
   }
+
+  /* Un seul anneau de focus, visible sur toutes les surfaces sombres. */
+  :focus-visible {
+    outline: 2px solid var(--volt);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
@@ -131,27 +143,34 @@
   input[type="radio"]:not(:disabled) {
     @apply cursor-pointer;
   }
+
+  /* Les chiffres de prix et de stock s'alignent en colonne. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer components {
   /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
+   * Conteneur centré à gouttières responsives.
+   * Pour une largeur sur mesure, préférer max-w-* directement.
    */
   .container {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
+    padding-left: 1rem;
     padding-right: 1rem;
   }
 
@@ -162,16 +181,62 @@
 
   @media (min-width: 640px) {
     .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
+      padding-left: 1.5rem;
       padding-right: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
     .container {
-      padding-left: 2rem; /* 32px - desktop padding */
+      padding-left: 2rem;
       padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
+      max-width: 1240px;
     }
+  }
+
+  /**
+   * Échelle d'affichage — Archivo élargi (axe wdth), interlettrage resserré
+   * à mesure que le corps grandit. Sert aux titres et aux prix, pas au texte.
+   */
+  .display-xl {
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-size: clamp(2.5rem, 7vw, 4.5rem);
+    font-weight: 800;
+    font-stretch: 112%;
+    line-height: 0.96;
+    letter-spacing: -0.03em;
+  }
+
+  .display-lg {
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-size: clamp(1.875rem, 4vw, 2.75rem);
+    font-weight: 700;
+    font-stretch: 108%;
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+  }
+
+  .display-md {
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-size: clamp(1.25rem, 2.2vw, 1.5rem);
+    font-weight: 700;
+    font-stretch: 105%;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+
+  /* Le prix : plus gros élément de l'étiquette produit. */
+  .prix {
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-weight: 800;
+    font-stretch: 110%;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Longueur de ligne confortable pour le texte courant. */
+  .prose-ks {
+    max-width: 62ch;
+    line-height: 1.65;
   }
 }

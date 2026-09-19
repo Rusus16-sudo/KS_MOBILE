@@ -1,597 +1,545 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Heart, ShoppingCart, MessageCircle, MapPin, Phone, Mail, Star } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+  MapPin,
+  Phone,
+  Mail,
+  Star,
+  ShieldCheck,
+  Repeat,
+  Handshake,
+  MessageCircle,
+  ShoppingBag,
+  type LucideIcon,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import Header from "@/components/site/Header";
+import Footer from "@/components/site/Footer";
+import WhatsAppButton from "@/components/site/WhatsAppButton";
+import ProductCard, {
+  ProductCardSkeleton,
+  type Produit,
+} from "@/components/site/ProductCard";
+import { AuthModal } from "@/components/AuthModal";
 import { useCart } from "@/contexts/CartContext";
-
-const SLIDER_IMAGES = [
-  { id: 1, src: "/samsung-s24.jpg", alt: "Samsung Galaxy S24 Ultra", title: "Samsung Galaxy S24 Ultra" },
-  { id: 2, src: "/iphone-15-pro.jpg", alt: "iPhone 15 Pro Max", title: "iPhone 15 Pro Max" },
-  { id: 3, src: "/pixel-8-pro.jpg", alt: "Google Pixel 8 Pro", title: "Google Pixel 8 Pro" },
-];
-
-const PRODUCTS_NEW = [
-  {
-    id: 1,
-    name: "Samsung Galaxy S24 Ultra",
-    category: "Samsung",
-    price: "1,299,000 FCFA",
-    image: "/samsung-s24.jpg",
-    badge: "Nouveau",
-  },
-  {
-    id: 2,
-    name: "iPhone 15 Pro Max",
-    category: "iPhone",
-    price: "1,599,000 FCFA",
-    image: "/iphone-15-pro.jpg",
-    badge: "Nouveau",
-  },
-  {
-    id: 3,
-    name: "Google Pixel 8 Pro",
-    category: "Google Pixel",
-    price: "999,000 FCFA",
-    image: "/pixel-8-pro.jpg",
-    badge: "Nouveau",
-  },
-];
-
-const PRODUCTS_BEST = [
-  {
-    id: 4,
-    name: "Samsung Galaxy A54",
-    category: "Samsung",
-    price: "599,000 FCFA",
-    image: "/samsung-s24.jpg",
-    rating: 4.8,
-  },
-  {
-    id: 5,
-    name: "iPhone 14 Pro",
-    category: "iPhone",
-    price: "999,000 FCFA",
-    image: "/iphone-15-pro.jpg",
-    rating: 4.9,
-  },
-  {
-    id: 6,
-    name: "Google Pixel 7a",
-    category: "Google Pixel",
-    price: "499,000 FCFA",
-    image: "/pixel-8-pro.jpg",
-    rating: 4.7,
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    id: 1,
-    name: "Jean Dupont",
-    text: "Excellent service et produits authentiques. Je recommande vivement!",
-    rating: 5,
-  },
-  {
-    id: 2,
-    name: "Marie Nkomo",
-    text: "Livraison rapide et produits de qualité. Très satisfait!",
-    rating: 5,
-  },
-  {
-    id: 3,
-    name: "Pierre Mbele",
-    text: "Meilleure boutique de téléphones à Douala. Équipe très professionnelle.",
-    rating: 5,
-  },
-];
-
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  BOUTIQUE,
+  formatPrix,
+  libelleEtat,
+  messageProduit,
+  ouvrirWhatsApp,
+  getVisuel,
+  VISUEL_DEFAUT,
+} from "@/lib/boutique";
+import { toast } from "sonner";
+
+// Témoignages de démonstration : à remplacer par la table `reviews` une fois
+// les avis clients réels collectés.
+const TEMOIGNAGES = [
+  { id: 1, nom: "Jean Dupont", texte: "Excellent service et produits authentiques. Je recommande vivement.", note: 5 },
+  { id: 2, nom: "Marie Nkomo", texte: "Livraison rapide et produits de qualité. Très satisfaite.", note: 5 },
+  { id: 3, nom: "Pierre Mbele", texte: "Meilleure boutique de téléphones à Douala. Équipe très professionnelle.", note: 5 },
+];
+
+const SERVICES = [
+  {
+    icone: ShieldCheck,
+    titre: "Chaque appareil est vérifié",
+    texte:
+      "IMEI contrôlé, batterie testée, accessoires d'origine. Vous repartez avec votre facture et la garantie.",
+  },
+  {
+    icone: Handshake,
+    titre: "Le prix se discute",
+    texte:
+      "Les prix sont affichés, mais proposez le vôtre sur WhatsApp. Nous répondons dans la journée.",
+  },
+  {
+    icone: Repeat,
+    titre: "Reprise de votre ancien téléphone",
+    texte:
+      "Apportez votre appareil en boutique : nous l'estimons et déduisons sa valeur de votre achat.",
+  },
+];
 
 export default function Home() {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [favorites, setFavorites] = useState<number[]>([]);
-  const [formData, setFormData] = useState({ name: "", email: "", message: "" });
-  const [formSubmitted, setFormSubmitted] = useState(false);
-  const [cartNotification, setCartNotification] = useState<string | null>(null);
-  
-  // Real data state
-  const [productsNew, setProductsNew] = useState<any[]>([]);
-  const [productsBest, setProductsBest] = useState<any[]>([]);
-  
-  const { cartItems, addToCart } = useCart();
-  const router = useRouter();
-  const setLocation = router.push;
+  const [produits, setProduits] = useState<Produit[]>([]);
+  const [chargement, setChargement] = useState(true);
+  const [favoris, setFavoris] = useState<Array<string | number>>([]);
+  const [formulaire, setFormulaire] = useState({ nom: "", email: "", message: "" });
+
+  const { user, setShowAuthModal } = useAuth();
+  const { addToCart } = useCart();
 
   useEffect(() => {
-    fetchProducts();
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % SLIDER_IMAGES.length);
-    }, 5000);
-    return () => clearInterval(timer);
+    let actif = true;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .gt("stock_quantity", 0)
+        .order("created_at", { ascending: false })
+        .limit(7);
+
+      if (!actif) return;
+      if (error) console.error("Chargement des produits impossible", error);
+      setProduits(data ?? []);
+      setChargement(false);
+    })();
+
+    return () => {
+      actif = false;
+    };
   }, []);
 
-  const fetchProducts = async () => {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .gt("stock_quantity", 0)
-      .order("created_at", { ascending: false })
-      .limit(6);
-      
-    if (data) {
-      // Split mock data logic for New vs Best (e.g. first 3 are new, next 3 are best)
-      setProductsNew(data.slice(0, 3));
-      setProductsBest(data.slice(3, 6));
-    }
-  };
+  // Le premier article en stock tient lieu de vitrine : la page d'accueil
+  // montre le stock réel plutôt qu'un visuel générique.
+  const vedette = produits[0];
+  const selection = produits.slice(1, 7);
 
-  const toggleFavorite = (id: number) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id]
+  const basculerFavori = (id: Produit["id"]) =>
+    setFavoris((liste) =>
+      liste.includes(id) ? liste.filter((f) => f !== id) : [...liste, id]
     );
-  };
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.name && formData.email && formData.message) {
-      const message = `Bonjour, je m'appelle ${formData.name}. ${formData.message}`;
-      const whatsappUrl = `https://wa.me/237676547289?text=${encodeURIComponent(message)}`;
-      window.open(whatsappUrl, "_blank");
-      setFormData({ name: "", email: "", message: "" });
-      setFormSubmitted(true);
-      setTimeout(() => setFormSubmitted(false), 3000);
+  const ajouterAuPanier = (produit: Produit) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
     }
-  };
-
-  const handleWhatsApp = (productName: string) => {
-    const message = `Bonjour, je suis intéressé par le ${productName}. Pouvez-vous me donner plus d'informations?`;
-    const whatsappUrl = `https://wa.me/237676547289?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, "_blank");
-  };
-
-  const handleAddToCart = (product: any) => {
     addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      category: product.category,
-      image: product.image,
+      id: produit.id,
+      name: produit.name,
+      price: produit.price,
+      category: produit.brand || produit.category || "Téléphone",
+      image: getVisuel(produit),
     });
-    setCartNotification(`${product.name} ajoute au panier!`);
-    setTimeout(() => setCartNotification(null), 2000);
+    toast.success(`${produit.name} ajouté au panier`);
   };
+
+  const envoyerFormulaire = (e: React.FormEvent) => {
+    e.preventDefault();
+    const { nom, email, message } = formulaire;
+    if (!nom || !email || !message) return;
+    ouvrirWhatsApp(`Bonjour ${BOUTIQUE.nom}, je m'appelle ${nom} (${email}). ${message}`);
+    setFormulaire({ nom: "", email: "", message: "" });
+    toast.success("Votre message s'ouvre dans WhatsApp");
+  };
+
+  const champ = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setFormulaire((f) => ({ ...f, [e.target.name]: e.target.value }));
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Cart Notification */}
-      {cartNotification && (
-        <div className="fixed top-20 right-4 bg-accent text-accent-foreground px-4 py-3 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top">
-          {cartNotification}
-        </div>
-      )}
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
-        <div className="container flex items-center justify-between h-16">
-          <div className="text-2xl font-bold text-accent">📱 TeleBoutique</div>
-          <div className="hidden md:flex gap-8">
-            <a href="/" className="hover:text-accent transition">Accueil</a>
-            <a href="/catalogue" className="hover:text-accent transition">Catalogue</a>
-            <a href="/#about" className="hover:text-accent transition">À propos</a>
-            <a href="/#contact" className="hover:text-accent transition">Contact</a>
-          </div>
-          <button
-            onClick={() => setLocation("/cart")}
-            className="relative p-2 hover:bg-secondary rounded-lg transition"
+    <div className="flex min-h-screen flex-col bg-noir text-foreground">
+      <Header />
+
+      <main id="contenu" className="flex-1">
+        {/* --- Vitrine ------------------------------------------------------ */}
+        <section className="border-b border-line">
+          <motion.div
+            initial="masque"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
+            className="container grid items-center gap-12 py-16 lg:grid-cols-[1.05fr_1fr] lg:py-24"
           >
-            <ShoppingCart size={24} className="text-accent" />
-            {cartItems.length > 0 && (
-              <span className="absolute top-0 right-0 bg-accent text-accent-foreground text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
-                {cartItems.length}
-              </span>
-            )}
-          </button>
-        </div>
-      </nav>
-
-      {/* Hero Slider */}
-      <section id="home" className="relative h-screen max-h-96 md:max-h-screen overflow-hidden bg-secondary">
-        <div className="relative w-full h-full">
-          {SLIDER_IMAGES.map((slide, index) => (
-            <div
-              key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-1000 ${
-                index === currentSlide ? "opacity-100" : "opacity-0"
-              }`}
-            >
-              <img
-                src={slide.src}
-                alt={slide.alt}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/40"></div>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-                  {slide.title}
-                </h1>
-                <p className="text-xl md:text-2xl text-white/90 mb-8">
-                  Les meilleurs smartphones premium à Douala
-                </p>
-                <a href="/catalogue">
-                  <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
-                    Voir nos produits
-                  </Button>
-                </a>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Slider Controls */}
-        <button
-          onClick={() => setCurrentSlide((prev) => (prev - 1 + SLIDER_IMAGES.length) % SLIDER_IMAGES.length)}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full transition"
-        >
-          ←
-        </button>
-        <button
-          onClick={() => setCurrentSlide((prev) => (prev + 1) % SLIDER_IMAGES.length)}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full transition"
-        >
-          →
-        </button>
-
-        {/* Slider Indicators */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-          {SLIDER_IMAGES.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`w-2 h-2 rounded-full transition ${
-                index === currentSlide ? "bg-accent w-8" : "bg-white/50"
-              }`}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* Nouveautés Section */}
-      <section className="py-16 md:py-24 bg-background">
-        <div className="container">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-center">
-            Nouveautés
-          </h2>
-          <p className="text-center text-muted-foreground mb-12 text-lg">
-            Découvrez les derniers modèles de smartphones premium
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {productsNew.map((product) => (
-              <div
-                key={product.id}
-                className="group bg-card rounded-lg overflow-hidden border border-border hover:border-accent transition-all duration-300 hover:shadow-2xl hover:shadow-accent/20"
-              >
-                <div className="relative h-64 overflow-hidden bg-secondary">
-                  <img
-                    src={product.images?.[0] || "/placeholder.jpg"}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                  <div className="absolute top-4 right-4 bg-accent text-accent-foreground px-3 py-1 rounded-full text-sm font-semibold">
-                    {product.badge || "Nouveau"}
-                  </div>
-                  <button
-                    onClick={() => toggleFavorite(product.id)}
-                    className="absolute top-4 left-4 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full transition"
-                  >
-                    <Heart
-                      size={20}
-                      fill={favorites.includes(product.id) ? "currentColor" : "none"}
-                    />
-                  </button>
-                </div>
-                <div className="p-6">
-                  <p className="text-sm text-accent mb-2">{product.brand}</p>
-                  <h3 className="text-xl font-bold mb-4">{product.name}</h3>
-                  <p className="text-2xl font-bold text-accent mb-4">{product.price.toLocaleString()} FCFA</p>
-                  <div className="flex gap-2">
-                    <Button
-                      className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
-                      onClick={() => handleWhatsApp(product.name)}
-                    >
-                      <MessageCircle size={18} className="mr-2" />
-                      WhatsApp
-                    </Button>
-                    <Button variant="outline" className="flex-1" onClick={() => handleAddToCart(product)}>
-                      <ShoppingCart size={18} />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Meilleures Ventes Section */}
-      <section className="py-16 md:py-24 bg-secondary">
-        <div className="container">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-center">
-            Meilleures Ventes
-          </h2>
-          <p className="text-center text-muted-foreground mb-12 text-lg">
-            Les modèles les plus populaires et appréciés par nos clients
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {productsBest.map((product) => (
-              <div
-                key={product.id}
-                className="group bg-card rounded-lg overflow-hidden border border-border hover:border-accent transition-all duration-300 hover:shadow-2xl hover:shadow-accent/20"
-              >
-                <div className="relative h-64 overflow-hidden bg-background">
-                  <img
-                    src={product.images?.[0] || "/placeholder.jpg"}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                  <button
-                    onClick={() => toggleFavorite(product.id)}
-                    className="absolute top-4 left-4 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full transition"
-                  >
-                    <Heart
-                      size={20}
-                      fill={favorites.includes(product.id) ? "currentColor" : "none"}
-                    />
-                  </button>
-                </div>
-                <div className="p-6">
-                  <p className="text-sm text-accent mb-2">{product.brand}</p>
-                  <h3 className="text-xl font-bold mb-2">{product.name}</h3>
-                  <div className="flex items-center gap-1 mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        size={16}
-                        fill={i < Math.floor(product.rating || 5) ? "currentColor" : "none"}
-                        className="text-accent"
-                      />
-                    ))}
-                    <span className="text-sm text-muted-foreground ml-2">({product.rating || 5})</span>
-                  </div>
-                  <p className="text-2xl font-bold text-accent mb-4">{product.price.toLocaleString()} FCFA</p>
-                  <div className="flex gap-2">
-                    <Button
-                      className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
-                      onClick={() => handleWhatsApp(product.name)}
-                    >
-                      <MessageCircle size={18} className="mr-2" />
-                      WhatsApp
-                    </Button>
-                    <Button variant="outline" className="flex-1" onClick={() => handleAddToCart(product)}>
-                      <ShoppingCart size={18} />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Avis Clients */}
-      <section className="py-16 md:py-24 bg-background">
-        <div className="container">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-center">
-            Avis Clients
-          </h2>
-          <p className="text-center text-muted-foreground mb-12 text-lg">
-            Ce que nos clients pensent de nous
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {TESTIMONIALS.map((testimonial) => (
-              <div key={testimonial.id} className="bg-card rounded-lg p-8 border border-border">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} size={18} fill="currentColor" className="text-accent" />
-                  ))}
-                </div>
-                <p className="text-lg mb-6 text-muted-foreground italic">"{testimonial.text}"</p>
-                <p className="font-semibold">{testimonial.name}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* À Propos */}
-      <section id="about" className="py-16 md:py-24 bg-secondary">
-        <div className="container">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-6">Qui Sommes-Nous?</h2>
-              <p className="text-lg text-muted-foreground mb-4">
-                TeleBoutique est votre partenaire de confiance pour l'achat de smartphones premium à Douala. Depuis 2018, nous proposons les meilleures marques mondiales avec un service irréprochable.
-              </p>
-              <p className="text-lg text-muted-foreground mb-6">
-                Situés à Akwa, nous offrons une expérience d'achat unique avec des produits authentiques garantis et une équipe d'experts prête à vous conseiller.
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="text-accent text-2xl">✓</div>
-                  <div>
-                    <h3 className="font-bold mb-1">Produits Authentiques</h3>
-                    <p className="text-muted-foreground">Tous nos produits sont garantis 100% authentiques</p>
-                  </div>
+              <motion.h1
+                variants={apparition}
+                className="display-xl max-w-[14ch] text-balance text-blanc"
+              >
+                Des téléphones vérifiés, des prix affichés.
+              </motion.h1>
+
+              <motion.p
+                variants={apparition}
+                className="prose-ks mt-6 text-lg text-muted-foreground"
+              >
+                Samsung, iPhone et Google Pixel, neufs et reconditionnés, en boutique à{" "}
+                {BOUTIQUE.quartier}. Vous connaissez le prix avant d&apos;entrer et vous
+                repartez avec votre facture.
+              </motion.p>
+
+              <motion.div variants={apparition} className="mt-8 flex flex-wrap gap-3">
+                <Button asChild size="lg">
+                  <Link href="/catalogue">
+                    <ShoppingBag size={18} aria-hidden="true" />
+                    Voir le catalogue
+                  </Link>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-line-strong text-blanc"
+                  onClick={() =>
+                    ouvrirWhatsApp(`Bonjour ${BOUTIQUE.nom}, j'aimerais un renseignement.`)
+                  }
+                >
+                  <MessageCircle size={18} aria-hidden="true" />
+                  Écrire sur WhatsApp
+                </Button>
+              </motion.div>
+
+              <motion.dl
+                variants={apparition}
+                className="mt-10 grid gap-x-8 gap-y-4 border-t border-line pt-6 text-sm sm:grid-cols-3"
+              >
+                <div>
+                  <dt className="text-muted-foreground">Adresse</dt>
+                  <dd className="mt-0.5 text-blanc">{BOUTIQUE.adresse}</dd>
                 </div>
-                <div className="flex items-start gap-4">
-                  <div className="text-accent text-2xl">✓</div>
-                  <div>
-                    <h3 className="font-bold mb-1">Service Rapide</h3>
-                    <p className="text-muted-foreground">Livraison et service après-vente rapides</p>
-                  </div>
+                <div>
+                  <dt className="text-muted-foreground">Ouvert</dt>
+                  <dd className="mt-0.5 text-blanc">{BOUTIQUE.horaires}</dd>
                 </div>
-                <div className="flex items-start gap-4">
-                  <div className="text-accent text-2xl">✓</div>
-                  <div>
-                    <h3 className="font-bold mb-1">Fiabilité</h3>
-                    <p className="text-muted-foreground">Des années d'expérience et de confiance</p>
-                  </div>
+                <div>
+                  <dt className="text-muted-foreground">Téléphone</dt>
+                  <dd className="tabular mt-0.5 text-blanc">{BOUTIQUE.telephone}</dd>
                 </div>
-              </div>
+              </motion.dl>
             </div>
-            <div className="bg-card rounded-lg p-8 border border-border">
-              <h3 className="text-2xl font-bold mb-6">Nos Marques</h3>
-              <div className="space-y-4">
-                {["Samsung", "iPhone", "Google Pixel", "Accessoires Premium"].map((brand) => (
-                  <div key={brand} className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-accent rounded-full"></div>
-                    <span className="text-lg">{brand}</span>
-                  </div>
-                ))}
+
+            {/* L'appareil en vitrine est le premier article réellement en stock. */}
+            <motion.div variants={apparition}>
+              {chargement ? (
+                <div className="mx-auto aspect-[4/5] w-full max-w-sm animate-pulse border border-line bg-surface lg:max-w-none" />
+              ) : vedette ? (
+                <VitrineProduit produit={vedette} onAjouter={ajouterAuPanier} />
+              ) : (
+                <VitrineVide />
+              )}
+            </motion.div>
+          </motion.div>
+        </section>
+
+        {/* --- Ce que fait la boutique -------------------------------------- */}
+        <section className="border-b border-line bg-surface">
+          <div className="container grid gap-8 py-14 md:grid-cols-3">
+            {SERVICES.map(({ icone: Icone, titre, texte }) => (
+              <div key={titre}>
+                <Icone size={22} className="text-volt" aria-hidden="true" />
+                <h2 className="mt-3 text-base font-semibold text-blanc">{titre}</h2>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{texte}</p>
               </div>
+            ))}
+          </div>
+        </section>
+
+        {/* --- Sélection ----------------------------------------------------- */}
+        <section className="border-b border-line">
+          <div className="container py-16 lg:py-20">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="display-lg text-blanc">En boutique cette semaine</h2>
+                <p className="prose-ks mt-2 text-muted-foreground">
+                  Le stock disponible aujourd&apos;hui à {BOUTIQUE.quartier}.
+                </p>
+              </div>
+              <Link href="/catalogue" className="text-sm text-volt hover:text-blanc">
+                Tout le catalogue
+              </Link>
+            </div>
+
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {chargement ? (
+                Array.from({ length: 3 }, (_, i) => <ProductCardSkeleton key={i} />)
+              ) : selection.length > 0 ? (
+                selection.map((produit) => (
+                  <ProductCard
+                    key={produit.id}
+                    produit={produit}
+                    favori={favoris.includes(produit.id)}
+                    onFavori={basculerFavori}
+                    onAjouter={ajouterAuPanier}
+                  />
+                ))
+              ) : (
+                <p className="text-muted-foreground">
+                  Le catalogue en ligne se remplit. Passez en boutique ou écrivez-nous sur
+                  WhatsApp pour connaître le stock du jour.
+                </p>
+              )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Contact */}
-      <section id="contact" className="py-16 md:py-24 bg-background">
-        <div className="container">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-center">
-            Nous Contacter
-          </h2>
-          <p className="text-center text-muted-foreground mb-12 text-lg">
-            Posez-nous vos questions, nous sommes là pour vous aider
-          </p>
+        {/* --- La boutique --------------------------------------------------- */}
+        <section id="boutique" className="scroll-mt-24 border-b border-line bg-surface">
+          <div className="container grid gap-12 py-16 lg:grid-cols-2 lg:py-20">
+            <div>
+              <h2 className="display-lg text-blanc">La boutique</h2>
+              <div className="prose-ks mt-5 space-y-4 text-muted-foreground">
+                <p>
+                  {BOUTIQUE.nom} tient boutique à {BOUTIQUE.quartier}, au cœur de{" "}
+                  {BOUTIQUE.ville}. Nous vendons des smartphones neufs et reconditionnés, et
+                  nous les vendons en face à face : vous manipulez l&apos;appareil, vous
+                  vérifiez l&apos;IMEI avec nous, vous payez le prix convenu.
+                </p>
+                <p>
+                  La contrefaçon est le vrai risque du marché. C&apos;est pourquoi chaque
+                  appareil passe le même contrôle avant d&apos;être mis en rayon, et pourquoi
+                  la facture accompagne systématiquement la vente.
+                </p>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="space-y-8">
-              <div className="flex items-start gap-4">
-                <MapPin className="text-accent mt-1" size={24} />
-                <div>
-                  <h3 className="font-bold text-lg mb-2">Localisation</h3>
-                  <p className="text-muted-foreground">Akwa, Douala - Cameroun</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <Phone className="text-accent mt-1" size={24} />
-                <div>
-                  <h3 className="font-bold text-lg mb-2">Téléphone</h3>
-                  <p className="text-muted-foreground">+237 676 547 289</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <Mail className="text-accent mt-1" size={24} />
-                <div>
-                  <h3 className="font-bold text-lg mb-2">Email</h3>
-                  <p className="text-muted-foreground">contact@teleboutique.cm</p>
-                </div>
-              </div>
-              <Button
-                size="lg"
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                onClick={() => handleWhatsApp("information")}
-              >
-                <MessageCircle size={20} className="mr-2" />
-                Contactez-nous sur WhatsApp
-              </Button>
+              <ul className="mt-8 space-y-4 border-t border-line pt-6">
+                {[
+                  ["Paiement échelonné", "Réglez en plusieurs fois, échéancier convenu à la signature."],
+                  ["Reprise", "Votre ancien téléphone est estimé en boutique et déduit du prix."],
+                  ["Négociation", "Proposez votre prix sur WhatsApp, nous répondons dans la journée."],
+                ].map(([titre, texte]) => (
+                  <li key={titre}>
+                    <h3 className="text-sm font-semibold text-blanc">{titre}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{texte}</p>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <form className="space-y-4 bg-card rounded-lg p-8 border border-border" onSubmit={handleFormSubmit}>
-              {formSubmitted && (
-                <div className="bg-accent/20 border border-accent text-accent p-3 rounded-lg text-sm">
-                  Envoyé avec succès sur WhatsApp!
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium mb-2">Nom</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleFormChange}
-                  placeholder="Votre nom"
-                  className="w-full px-4 py-2 rounded-lg bg-secondary border border-border focus:border-accent outline-none transition"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <input
+            <div>
+              <h2 className="display-md text-blanc">Ce qu&apos;en disent nos clients</h2>
+              <ul className="mt-6 space-y-4">
+                {TEMOIGNAGES.map((avis) => (
+                  <li key={avis.id} className="border border-line bg-noir p-5">
+                    <div className="flex gap-0.5" aria-label={`Note : ${avis.note} sur 5`}>
+                      {Array.from({ length: avis.note }, (_, i) => (
+                        <Star
+                          key={i}
+                          size={14}
+                          fill="currentColor"
+                          aria-hidden="true"
+                          className="text-laiton"
+                        />
+                      ))}
+                    </div>
+                    <p className="mt-3 text-sm leading-relaxed text-blanc">{avis.texte}</p>
+                    <p className="mt-3 text-xs text-muted-foreground">{avis.nom}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* --- Contact -------------------------------------------------------- */}
+        <section id="contact" className="scroll-mt-24">
+          <div className="container grid gap-12 py-16 lg:grid-cols-2 lg:py-20">
+            <div>
+              <h2 className="display-lg text-blanc">Passez nous voir</h2>
+              <p className="prose-ks mt-3 text-muted-foreground">
+                La boutique vous accueille {BOUTIQUE.horaires.toLowerCase()}.
+              </p>
+
+              <dl className="mt-8 space-y-5 border-t border-line pt-6">
+                <Coordonnee icone={MapPin} intitule="Adresse">
+                  {BOUTIQUE.adresse}
+                </Coordonnee>
+                <Coordonnee icone={Phone} intitule="Téléphone">
+                  <a href={`tel:${BOUTIQUE.whatsapp}`} className="tabular hover:text-volt">
+                    {BOUTIQUE.telephone}
+                  </a>
+                </Coordonnee>
+                <Coordonnee icone={Mail} intitule="Email">
+                  <a href={`mailto:${BOUTIQUE.email}`} className="hover:text-volt">
+                    {BOUTIQUE.email}
+                  </a>
+                </Coordonnee>
+              </dl>
+            </div>
+
+            <form onSubmit={envoyerFormulaire} className="border border-line bg-surface p-6 sm:p-8">
+              <h3 className="display-md text-blanc">Écrivez-nous</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Votre message s&apos;ouvrira dans WhatsApp, prêt à envoyer.
+              </p>
+
+              <div className="mt-6 space-y-4">
+                <Champ id="nom" label="Votre nom" value={formulaire.nom} onChange={champ} />
+                <Champ
+                  id="email"
                   type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleFormChange}
-                  placeholder="votre@email.com"
-                  className="w-full px-4 py-2 rounded-lg bg-secondary border border-border focus:border-accent outline-none transition"
-                  required
+                  label="Votre email"
+                  value={formulaire.email}
+                  onChange={champ}
                 />
+                <div>
+                  <label htmlFor="message" className="mb-1.5 block text-sm text-blanc">
+                    Votre message
+                  </label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    rows={4}
+                    required
+                    value={formulaire.message}
+                    onChange={champ}
+                    placeholder="Quel appareil cherchez-vous ?"
+                    className="w-full resize-none rounded-md border border-line-strong bg-noir px-4 py-3 text-sm text-blanc placeholder:text-muted-foreground"
+                  />
+                </div>
+                <Button type="submit" size="lg" className="w-full">
+                  <MessageCircle size={18} aria-hidden="true" />
+                  Envoyer sur WhatsApp
+                </Button>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Message</label>
-                <textarea
-                  name="message"
-                  value={formData.message}
-                  onChange={handleFormChange}
-                  placeholder="Votre message..."
-                  rows={4}
-                  className="w-full px-4 py-2 rounded-lg bg-secondary border border-border focus:border-accent outline-none transition"
-                  required
-                ></textarea>
-              </div>
-              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-                Envoyer le message
-              </Button>
             </form>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* Footer */}
-      <footer className="bg-secondary border-t border-border py-12">
-        <div className="container">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h3 className="font-bold text-lg mb-4">TeleBoutique</h3>
-              <p className="text-muted-foreground">Votre boutique de téléphones premium à Douala</p>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Navigation</h4>
-              <ul className="space-y-2 text-muted-foreground">
-                <li><a href="#home" className="hover:text-accent transition">Accueil</a></li>
-                <li><a href="#catalogue" className="hover:text-accent transition">Catalogue</a></li>
-                <li><a href="#about" className="hover:text-accent transition">À propos</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Contact</h4>
-              <ul className="space-y-2 text-muted-foreground">
-                <li>+237 676 547 289</li>
-                <li>contact@teleboutique.cm</li>
-                <li>Akwa, Douala</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Réseaux Sociaux</h4>
-              <div className="flex gap-4">
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent/80 transition">Facebook</a>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent/80 transition">Instagram</a>
-                <a href="https://wa.me/237676547289" target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent/80 transition">WhatsApp</a>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-border pt-8 text-center text-muted-foreground">
-            <p>&copy; 2024 TeleBoutique. Tous droits réservés.</p>
-          </div>
+      <Footer />
+      <WhatsAppButton />
+      <AuthModal />
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+const apparition = {
+  masque: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+};
+
+/** Grande étiquette de vitrine : même grammaire que la carte produit, en plus grand. */
+function VitrineProduit({
+  produit,
+  onAjouter,
+}: {
+  produit: Produit;
+  onAjouter: (p: Produit) => void;
+}) {
+  const [visuel, setVisuel] = useState(getVisuel(produit));
+
+  return (
+    <article className="mx-auto w-full max-w-sm border border-line bg-surface lg:max-w-none">
+      <div className="relative aspect-[5/4] overflow-hidden bg-raised">
+        <Image
+          src={visuel}
+          alt={produit.name}
+          fill
+          priority
+          quality={90}
+          sizes="(min-width: 1024px) 560px, 90vw"
+          className="object-contain p-8"
+          onError={() => setVisuel(VISUEL_DEFAUT)}
+        />
+        <p className="absolute left-4 top-4 border border-laiton/40 bg-noir/80 px-2.5 py-1 text-xs text-laiton backdrop-blur">
+          En vitrine
+        </p>
+      </div>
+
+      <div className="p-6">
+        <p className="text-xs text-muted-foreground">
+          {produit.brand || produit.category || "Téléphone"}
+        </p>
+        <h2 className="mt-1 text-lg font-semibold text-blanc">{produit.name}</h2>
+
+        <hr className="my-4 border-line" />
+
+        <p className="prix text-4xl leading-none text-laiton">{formatPrix(produit.price)}</p>
+        <p className="mt-2.5 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1 text-laiton">
+            <ShieldCheck size={13} aria-hidden="true" />
+            Vérifié
+          </span>
+          <span aria-hidden="true">·</span>
+          {libelleEtat(produit.condition)}
+        </p>
+
+        <div className="mt-5 flex gap-2">
+          <Button className="flex-1" onClick={() => onAjouter(produit)}>
+            <ShoppingBag size={17} aria-hidden="true" />
+            Ajouter au panier
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={`Demander ${produit.name} sur WhatsApp`}
+            onClick={() => ouvrirWhatsApp(messageProduit(produit.name, produit.price))}
+            className="border-line-strong text-blanc hover:bg-whatsapp hover:text-noir"
+          >
+            <MessageCircle size={17} aria-hidden="true" />
+          </Button>
         </div>
-      </footer>
+      </div>
+    </article>
+  );
+}
+
+function VitrineVide() {
+  return (
+    <div className="mx-auto flex w-full max-w-sm flex-col justify-center border border-line bg-surface p-8 lg:max-w-none">
+      <p className="text-blanc">Le stock en ligne arrive.</p>
+      <p className="prose-ks mt-2 text-sm text-muted-foreground">
+        Écrivez-nous sur WhatsApp pour savoir ce qui est disponible aujourd&apos;hui en
+        boutique.
+      </p>
+      <Button
+        className="mt-5 w-fit"
+        onClick={() => ouvrirWhatsApp(`Bonjour ${BOUTIQUE.nom}, qu'avez-vous en stock ?`)}
+      >
+        <MessageCircle size={17} aria-hidden="true" />
+        Demander le stock du jour
+      </Button>
+    </div>
+  );
+}
+
+function Coordonnee({
+  icone: Icone,
+  intitule,
+  children,
+}: {
+  icone: LucideIcon;
+  intitule: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex gap-4">
+      <Icone size={18} className="mt-0.5 shrink-0 text-volt" aria-hidden />
+      <div>
+        <dt className="text-sm text-muted-foreground">{intitule}</dt>
+        <dd className="mt-0.5 text-blanc">{children}</dd>
+      </div>
+    </div>
+  );
+}
+
+function Champ({
+  id,
+  label,
+  type = "text",
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-sm text-blanc">
+        {label}
+      </label>
+      <input
+        id={id}
+        name={id}
+        type={type}
+        required
+        value={value}
+        onChange={onChange}
+        className="w-full rounded-md border border-line-strong bg-noir px-4 py-3 text-sm text-blanc placeholder:text-muted-foreground"
+      />
     </div>
   );
 }

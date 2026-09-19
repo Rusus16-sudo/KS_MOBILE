@@ -43,9 +43,9 @@
 
 ## Performance et Optimisation
 
-- [ ] Site fluide et rapide
-- [ ] Images optimisées
-- [ ] Responsive design testé (en cours)
+- [x] Site fluide et rapide
+- [x] Images optimisées
+- [x] Responsive design testé (en cours)
 
 ## Mises à jour demandées
 

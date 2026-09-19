@@ -1,6 +1,29 @@
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
+-- Drop existing tables to avoid conflicts
+drop table if exists public.notifications cascade;
+drop table if exists public.reviews cascade;
+drop table if exists public.trade_ins cascade;
+drop table if exists public.negotiations cascade;
+drop table if exists public.installment_payments cascade;
+drop table if exists public.credits cascade;
+drop table if exists public.sale_items cascade;
+drop table if exists public.sales cascade;
+drop table if exists public.products cascade;
+drop table if exists public.users cascade;
+
+-- Drop existing types to avoid conflicts
+drop type if exists notification_type cascade;
+drop type if exists trade_in_status cascade;
+drop type if exists negotiation_status cascade;
+drop type if exists payment_status cascade;
+drop type if exists credit_status cascade;
+drop type if exists payment_method cascade;
+drop type if exists sale_status cascade;
+drop type if exists product_condition cascade;
+drop type if exists user_role cascade;
+
 -- 1. USERS (extends Supabase auth.users)
 create type user_role as enum ('CUSTOMER', 'SELLER', 'ADMIN');
 create table public.users (
@@ -34,6 +57,9 @@ create table public.products (
 );
 alter table public.products enable row level security;
 create policy "Products are viewable by everyone" on public.products for select using (true);
+create policy "Products insertable by auth users" on public.products for insert with check (auth.role() = 'authenticated');
+create policy "Products updatable by auth users" on public.products for update using (auth.role() = 'authenticated');
+create policy "Products deletable by auth users" on public.products for delete using (auth.role() = 'authenticated');
 
 -- 3. SALES
 create type sale_status as enum ('PENDING', 'PAID', 'CANCELLED', 'REFUNDED');
@@ -131,11 +157,12 @@ create table public.notifications (
 );
 
 -- 11. STORAGE BUCKETS (product-images)
--- Assurez-vous d'activer l'extension "storage" ou que Supabase l'a activé par défaut.
 insert into storage.buckets (id, name, public) 
 values ('product-images', 'product-images', true)
 on conflict (id) do nothing;
 
--- Stratégies RLS (Policies) pour le Bucket (Public pour lecture, tout le monde pour l'upload pour démo, à sécuriser plus tard)
+drop policy if exists "Images publiques 1" on storage.objects;
 create policy "Images publiques 1" on storage.objects for select using ( bucket_id = 'product-images' );
+
+drop policy if exists "Uploads permis 1" on storage.objects;
 create policy "Uploads permis 1" on storage.objects for insert with check ( bucket_id = 'product-images' );
